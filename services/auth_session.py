@@ -5,6 +5,7 @@ import base64
 import os
 import logging
 import secrets
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -30,7 +31,13 @@ def create_session_cookie(payload: dict) -> str:
     Returns: A signed session string formatted as: {encoded_payload}.{signature}
     """
     try:
-        serialized = json.dumps(payload)
+        safe_payload = {
+            key: value for key, value in payload.items()
+            if key not in {"password", "hashed_password", "access_token"}
+        }
+        safe_payload["iat"] = int(time.time())
+        safe_payload["exp"] = int(time.time()) + 60 * 60 * 24 * 30
+        serialized = json.dumps(safe_payload)
         encoded = base64.urlsafe_b64encode(serialized.encode('utf-8')).decode('utf-8').rstrip("=")
         signature = _sign_data(encoded)
         return f"{encoded}.{signature}"
@@ -64,7 +71,12 @@ def verify_session_cookie(cookie_value: str) -> dict | None:
             encoded_payload += "=" * (4 - padding_needed)
             
         decoded_bytes = base64.urlsafe_b64decode(encoded_payload)
-        return json.loads(decoded_bytes.decode('utf-8'))
+        payload = json.loads(decoded_bytes.decode('utf-8'))
+        if not isinstance(payload, dict):
+            return None
+        if payload.get("exp", 0) and int(payload["exp"]) < int(time.time()):
+            return None
+        return payload
     except Exception as e:
         logger.error(f"Failed to verify or decode session cookie: {e}")
         return None

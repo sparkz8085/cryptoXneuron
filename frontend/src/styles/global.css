@@ -1,21 +1,21 @@
 :root {
   color-scheme: dark;
-  --bg: #050816;
-  --bg-elevated: rgba(16, 24, 38, 0.74);
-  --panel: rgba(16, 24, 38, 0.82);
-  --panel-strong: rgba(17, 27, 45, 0.94);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(108, 99, 255, 0.35);
-  --accent: #6c63ff;
-  --accent-2: #00e5ff;
-  --success: #4ade80;
-  --text: #ffffff;
-  --muted: rgba(255, 255, 255, 0.68);
+  --bg: #101312;
+  --bg-elevated: rgba(25, 32, 29, 0.78);
+  --panel: rgba(25, 32, 29, 0.86);
+  --panel-strong: rgba(31, 39, 34, 0.96);
+  --border: rgba(239, 241, 224, 0.12);
+  --border-strong: rgba(239, 179, 82, 0.44);
+  --accent: #efb352;
+  --accent-2: #95c9a2;
+  --success: #9bd7a2;
+  --text: #f3f0df;
+  --muted: rgba(243, 240, 223, 0.66);
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
-  --radius-xl: 30px;
-  --radius-lg: 22px;
-  --radius-md: 16px;
-  --radius-sm: 12px;
+  --radius-xl: 22px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
 }
 
 * {
@@ -28,14 +28,30 @@ html {
 
 body {
   margin: 0;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Trebuchet MS', sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(108, 99, 255, 0.18), transparent 34%),
-    radial-gradient(circle at 80% 20%, rgba(0, 229, 255, 0.14), transparent 30%),
-    linear-gradient(180deg, #050816 0%, #060a18 100%);
+    radial-gradient(circle at 15% 0%, rgba(239, 179, 82, 0.12), transparent 28%),
+    radial-gradient(circle at 90% 28%, rgba(149, 201, 162, 0.1), transparent 30%),
+    linear-gradient(135deg, #101312 0%, #171d19 52%, #0e1210 100%);
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+.home-page {
+  position: relative;
+}
+
+.home-page::before {
+  content: '';
+  position: absolute;
+  inset: -100px 0 auto;
+  height: 640px;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image: linear-gradient(rgba(243, 240, 223, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(243, 240, 223, 0.08) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent);
 }
 
 a {
@@ -227,9 +243,9 @@ input {
 }
 
 .primary-button {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #fff;
-  box-shadow: 0 12px 30px rgba(108, 99, 255, 0.32);
+  background: var(--accent);
+  color: #1b211c;
+  box-shadow: 0 12px 30px rgba(239, 179, 82, 0.22);
 }
 
 .secondary-button,
@@ -486,8 +502,8 @@ input {
   padding: 10px 16px;
   border-radius: 999px;
   color: white;
-  background: rgba(108, 99, 255, 0.14);
-  border: 1px solid rgba(108, 99, 255, 0.22);
+  background: rgba(239, 179, 82, 0.12);
+  border: 1px solid rgba(239, 179, 82, 0.28);
   width: fit-content;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -1182,5 +1198,204 @@ input {
   .resource-card,
   .login-panel {
     padding: 18px;
+  }
+}
+
+/* Home bento composition */
+.bento-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(420px, 1.08fr);
+  gap: 18px;
+  align-items: stretch;
+  min-height: 650px;
+}
+
+.bento-intro,
+.bento-dashboard,
+.bento-feature {
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.bento-intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(26px, 5vw, 64px);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(145deg, rgba(25, 32, 29, 0.92), rgba(16, 20, 18, 0.64));
+}
+
+.bento-intro .hero-subtitle {
+  max-width: 42ch;
+}
+
+.bento-dashboard {
+  border-radius: var(--radius-xl);
+  padding: clamp(18px, 3vw, 28px);
+  background: #202a24;
+  position: relative;
+}
+
+.bento-dashboard::after {
+  content: '';
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -40px;
+  top: -40px;
+  border-radius: 50%;
+  border: 1px solid rgba(239, 179, 82, 0.25);
+  box-shadow: 0 0 0 24px rgba(239, 179, 82, 0.04), 0 0 0 48px rgba(239, 179, 82, 0.025);
+  pointer-events: none;
+}
+
+.bento-dashboard .dashboard-grid {
+  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-rows: minmax(150px, 1fr) minmax(190px, 1.25fr) minmax(110px, 0.75fr);
+  height: calc(100% - 60px);
+}
+
+.bento-dashboard .mini-card {
+  border-radius: var(--radius-md);
+  background: rgba(9, 13, 11, 0.34);
+  border-color: rgba(243, 240, 223, 0.1);
+}
+
+.bento-dashboard .accent-card {
+  background: var(--accent);
+  color: #172019;
+}
+
+.bento-dashboard .accent-card span,
+.bento-dashboard .accent-card strong {
+  color: #172019;
+}
+
+.bento-dashboard .mini-card.wide {
+  grid-column: span 2;
+}
+
+.bento-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: auto;
+  padding-top: 36px;
+}
+
+.bento-stats .stat-card {
+  padding: 0 14px 0 0;
+  border-radius: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  box-shadow: none;
+}
+
+.bento-stats .stat-card:last-child {
+  border-right: 0;
+}
+
+.bento-stats .stat-card strong {
+  font-size: 1.16rem;
+  color: var(--accent);
+}
+
+.bento-features {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 0.8fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.bento-feature {
+  min-height: 215px;
+  border-radius: var(--radius-lg);
+  padding: 26px;
+  background: linear-gradient(140deg, rgba(29, 39, 32, 0.96), rgba(18, 24, 20, 0.86));
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.bento-feature:hover {
+  transform: translateY(-5px);
+  border-color: var(--border-strong);
+}
+
+.bento-feature.feature-wide {
+  background: linear-gradient(135deg, rgba(239, 179, 82, 0.95), rgba(224, 143, 71, 0.92));
+  color: #1c211c;
+}
+
+.bento-feature.feature-wide p,
+.bento-feature.feature-wide .feature-index {
+  color: rgba(28, 33, 28, 0.7);
+}
+
+.bento-feature.feature-tall {
+  min-height: 280px;
+}
+
+.bento-feature .feature-index {
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin-bottom: 34px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.bento-feature h4 {
+  max-width: 14ch;
+  font-size: 1.45rem;
+  line-height: 1.15;
+}
+
+.bento-feature p {
+  max-width: 34ch;
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .bento-hero,
+  .bento-features {
+    grid-template-columns: 1fr;
+  }
+
+  .bento-hero {
+    min-height: auto;
+  }
+
+  .bento-dashboard {
+    min-height: 560px;
+  }
+}
+
+@media (max-width: 560px) {
+  .bento-intro {
+    padding: 28px 22px;
+  }
+
+  .bento-dashboard {
+    min-height: 0;
+  }
+
+  .bento-dashboard .dashboard-grid {
+    display: grid;
+    height: auto;
+  }
+
+  .bento-stats {
+    gap: 8px;
+  }
+
+  .bento-stats .stat-card {
+    padding-right: 8px;
+  }
+
+  .bento-feature,
+  .bento-feature.feature-tall {
+    min-height: 190px;
   }
 }

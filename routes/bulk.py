@@ -20,6 +20,9 @@ templates = Jinja2Templates(directory=templates_dir)
 
 # Simple in-memory storage for bulk sessions. In production, use MongoDB or Redis.
 BULK_SESSIONS: Dict[str, Any] = {}
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_UPLOAD_ROWS = 10_000
+MAX_UPLOAD_COLUMNS = 64
 
 @router.get("/bulk-upload")
 async def bulk_upload_page(request: Request):
@@ -50,7 +53,9 @@ async def api_bulk_upload(request: Request, file: UploadFile = File(...)):
         
     try:
         logger.info(f"Starting processing for bulk upload file: {file.filename}")
-        contents = await file.read()
+        contents = await file.read(MAX_UPLOAD_BYTES + 1)
+        if len(contents) > MAX_UPLOAD_BYTES:
+            return JSONResponse(status_code=413, content={"status": "error", "message": "File exceeds the 10 MB upload limit."})
         if ext == ".csv":
             df = pd.read_csv(io.BytesIO(contents))
         else:
@@ -58,6 +63,8 @@ async def api_bulk_upload(request: Request, file: UploadFile = File(...)):
             
         if df.empty:
             return JSONResponse(status_code=400, content={"status": "error", "message": "The uploaded file is empty."})
+        if len(df) > MAX_UPLOAD_ROWS or len(df.columns) > MAX_UPLOAD_COLUMNS:
+            return JSONResponse(status_code=413, content={"status": "error", "message": "File exceeds the row or column limit."})
             
         # Ensure column headers are strings
         df.columns = df.columns.astype(str).str.strip()
@@ -216,6 +223,7 @@ async def api_bulk_upload(request: Request, file: UploadFile = File(...)):
         bulk_id = str(uuid.uuid4())
         BULK_SESSIONS[bulk_id] = {
             "id": bulk_id,
+            "owner_email": user.get("email"),
             "filename": file.filename,
             "total": len(df),
             "success": success_count,
@@ -236,15 +244,25 @@ async def api_bulk_upload(request: Request, file: UploadFile = File(...)):
         return JSONResponse(status_code=500, content={"status": "error", "message": "An error occurred while processing the file.", "detail": str(e)})
 
 @router.get("/api/bulk-results/{bulk_id}")
-async def get_bulk_results(bulk_id: str):
+async def get_bulk_results(request: Request, bulk_id: str):
+    user = verify_session_cookie(request.cookies.get("session"))
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     if bulk_id not in BULK_SESSIONS:
         raise HTTPException(status_code=404, detail="Bulk session not found")
+    if BULK_SESSIONS[bulk_id].get("owner_email") != user.get("email"):
+        raise HTTPException(status_code=403, detail="Forbidden")
     return BULK_SESSIONS[bulk_id]
 
 @router.get("/api/download/{bulk_id}")
-async def download_bulk_results(bulk_id: str, format: str = "csv"):
+async def download_bulk_results(request: Request, bulk_id: str, format: str = "csv"):
+    user = verify_session_cookie(request.cookies.get("session"))
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     if bulk_id not in BULK_SESSIONS:
         raise HTTPException(status_code=404, detail="Bulk session not found")
+    if BULK_SESSIONS[bulk_id].get("owner_email") != user.get("email"):
+        raise HTTPException(status_code=403, detail="Forbidden")
         
     data = BULK_SESSIONS[bulk_id]["results"]
     df = pd.DataFrame(data)
@@ -265,6 +283,10 @@ async def download_bulk_results(bulk_id: str, format: str = "csv"):
         )
     else:
         output = io.StringIO()
+        for column in df.columns:
+            df[column] = df[column].map(
+                lambda value: f"'{value}" if isinstance(value, str) and value.startswith(("=", "+", "-", "@")) else value
+            )
         df.to_csv(output, index=False)
         output.seek(0)
         return StreamingResponse(

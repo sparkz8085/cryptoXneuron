@@ -9,8 +9,12 @@ services:
         sync: false
       - key: MODEL_TRUSTED
         value: "1"
+      - key: APP_ENV
+        value: production
+      - key: SESSION_SECRET_KEY
+        sync: false
       - key: TRAINING_API_KEY
-        value: testkey
+        sync: false
       - key: PYTHON_VERSION
         value: 3.11.8
 

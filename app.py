@@ -37,6 +37,11 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.cookies.get("session"):
+        origin = request.headers.get("origin")
+        expected_origin = f"{request.url.scheme}://{request.url.netloc}"
+        if origin and origin.rstrip("/") != expected_origin.rstrip("/"):
+            return JSONResponse(status_code=403, content={"status": False, "message": "Cross-origin request rejected."})
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -70,7 +75,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled Global Exception on {request.url.path}: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"status": False, "message": "An unexpected internal server error occurred.", "detail": str(exc)}
+        content={"status": False, "message": "An unexpected internal server error occurred."}
     )
 
 @app.get("/health")

@@ -1,37 +1,23 @@
 import pandas as pd
-import pymongo
 import json
 import os
-from dotenv import load_dotenv
+from database.connection import close_mongodb_client, get_customer_collection, get_mongodb_client
+from config import CUSTOMER_COLLECTION_NAME
 
-load_dotenv()
-
-MONGO_DB_URL = os.getenv("MONGO_DB_URL", "")
-
-DATABASE = None
 COLLECTION = None
 MONGO_CLIENT = None
 
 # Try to connect to MongoDB, but don't fail if connection fails
-if MONGO_DB_URL and MONGO_DB_URL != "":
+if os.getenv("MONGO_DB_URL"):
     try:
-        # Try with SSL certificate verification
-        MONGO_CLIENT = pymongo.MongoClient(
-            MONGO_DB_URL,
-            serverSelectionTimeoutMS=5000,
-            retryWrites=True
-        )
-        
-        # Test connection
-        MONGO_CLIENT.admin.command('ping')
-        DATABASE = MONGO_CLIENT["customer_db"]
-        COLLECTION = DATABASE["marketing_records"]
+        MONGO_CLIENT = get_mongodb_client()
+        COLLECTION = get_customer_collection(MONGO_CLIENT)
         print("[OK] Successfully connected to MongoDB")
         
     except Exception as e:
-        print(f"[FAIL] MongoDB connection failed: {e}")
+        print("[FAIL] MongoDB connection failed; proceeding with local backup")
         print("  Proceeding without MongoDB (data will be saved locally)")
-        MONGO_CLIENT = None
+        COLLECTION = None
 else:
     print("[WARN] MONGO_DB_URL not set in .env file")
     print("  Proceeding without MongoDB (data will be saved locally)")
@@ -50,12 +36,10 @@ try:
             print("[OK] Data successfully migrated to MongoDB Cloud Atlas!")
             print(f"  Inserted {len(json_record)} records")
         except Exception as e:
-            print(f"[FAIL] Failed to insert data into MongoDB: {e}")
-            print("  Saving data locally instead...")
-            # Fallback: save to local JSON file
-            with open("notebooks/data_backup.json", "w") as f:
-                json.dump(json_record, f, indent=2)
-            print("[OK] Data backed up to notebooks/data_backup.json")
+            raise RuntimeError(
+                "MongoDB customer insert failed after a successful connection "
+                f"(error_type={type(e).__name__})."
+            ) from e
     else:
         # No MongoDB connection, save locally
         with open("notebooks/data_backup.json", "w") as f:
@@ -68,5 +52,4 @@ except Exception as e:
     raise
     
 finally:
-    if MONGO_CLIENT is not None:
-        MONGO_CLIENT.close()
+    close_mongodb_client()

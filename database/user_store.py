@@ -2,7 +2,8 @@ import os
 import json
 import datetime
 import bcrypt
-from database.connection import get_mongodb_client
+from database.connection import get_mongodb_client, get_user_collection
+from config import is_production
 
 def verify_password(plain_password, hashed_password):
     if not hashed_password:
@@ -46,15 +47,14 @@ def get_user_by_email(email: str) -> dict | None:
     """
     if not email:
         return None
-        
+
     email_lower = email.lower()
     
     # Try MongoDB first
     client = get_mongodb_client()
     if client is not None:
         try:
-            db = client["customer_db"]
-            collection = db["users"]
+            collection = get_user_collection(client)
             user = collection.find_one({"email": email_lower})
             if user:
                 # Remove MongoDB ObjectId for session serialization
@@ -62,10 +62,14 @@ def get_user_by_email(email: str) -> dict | None:
                     user["_id"] = str(user["_id"])
                 return user
         except Exception as e:
-            print(f"[WARN] MongoDB query failed ({e}). Checking local database...")
-        finally:
-            client.close()
-            
+            raise RuntimeError(
+                "[MONGO] User query failed; local JSON fallback is disabled after "
+                f"a successful connection (error_type={type(e).__name__})."
+            ) from e
+
+    if is_production():
+        return None
+    print("[MONGO] MongoDB unavailable - using local users.json fallback")
     users = _load_local_users()
     return users.get(email_lower)
 
@@ -80,7 +84,7 @@ def create_user_with_password(email: str, name: str, nickname: str, plain_passwo
     existing_user = get_user_by_email(email_lower)
     if existing_user:
         return None
-        
+
     hashed_password = get_password_hash(plain_password)
     now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
     avatar_url = f"https://api.dicebear.com/7.x/initials/svg?seed={name}"
@@ -101,18 +105,22 @@ def create_user_with_password(email: str, name: str, nickname: str, plain_passwo
     client = get_mongodb_client()
     if client is not None:
         try:
-            db = client["customer_db"]
-            collection = db["users"]
-            collection.insert_one(user_data)
-            if "_id" in user_data:
-                user_data["_id"] = str(user_data["_id"])
+            collection = get_user_collection(client)
+            result = collection.insert_one(user_data)
+            user_data["_id"] = str(result.inserted_id)
+            print(f"[MONGO] User inserted successfully; email={email_lower}")
             return user_data
         except Exception as e:
-            print(f"[WARN] MongoDB insert failed ({e}). Saving to local database...")
-        finally:
-            client.close()
-            
-    # Fallback to local JSON
+            raise RuntimeError(
+                "[MONGO] User insert failed; local JSON fallback is disabled after "
+                f"a successful connection (error_type={type(e).__name__})."
+            ) from e
+
+    if is_production():
+        raise RuntimeError("MongoDB is required for user storage in production.")
+
+    # Fallback to local JSON for development only.
+    print("[MONGO] MongoDB unavailable - using local users.json fallback")
     users = _load_local_users()
     users[email_lower] = user_data
     _save_local_users(users)
@@ -151,8 +159,7 @@ def upsert_user(provider: str, provider_uid: str, email: str, name: str, avatar_
     client = get_mongodb_client()
     if client is not None:
         try:
-            db = client["customer_db"]
-            collection = db["users"]
+            collection = get_user_collection(client)
             collection.update_one(
                 {"email": email_lower},
                 {"$set": user_data},
@@ -163,13 +170,22 @@ def upsert_user(provider: str, provider_uid: str, email: str, name: str, avatar_
             if saved_user:
                 if "_id" in saved_user:
                     saved_user["_id"] = str(saved_user["_id"])
+                print(f"[MONGO] User upserted successfully; email={email_lower}")
                 return saved_user
+            raise RuntimeError(
+                "MongoDB user upsert completed but the saved user could not be read back."
+            )
         except Exception as e:
-            print(f"[WARN] MongoDB upsert failed ({e}). Saving to local database...")
-        finally:
-            client.close()
-            
-    # Fallback to local JSON
+            raise RuntimeError(
+                "[MONGO] User upsert failed; local JSON fallback is disabled after "
+                f"a successful connection (error_type={type(e).__name__})."
+            ) from e
+
+    if is_production():
+        raise RuntimeError("MongoDB is required for user storage in production.")
+
+    # Fallback to local JSON for development only.
+    print("[MONGO] MongoDB unavailable - using local users.json fallback")
     users = _load_local_users()
     users[email_lower] = user_data
     _save_local_users(users)

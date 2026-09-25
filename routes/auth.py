@@ -1,12 +1,14 @@
 import os
 import secrets
 import requests
+from urllib.parse import urlencode
 from fastapi import APIRouter, Request, Response, status, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from services.auth_session import create_session_cookie
 from database.user_store import upsert_user, create_user_with_password, get_user_by_email, verify_password
+from config import is_production
 
 router = APIRouter()
 templates_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "templates"))
@@ -24,6 +26,15 @@ def get_redirect_uri(request: Request, provider: str) -> str:
     if base_url:
         return f"{base_url.rstrip('/')}/auth/callback/{provider}"
     return str(request.url_for(f"callback_{provider}"))
+
+def _oauth_redirect(url: str, state: str, secure: bool) -> RedirectResponse:
+    response = RedirectResponse(url=url)
+    response.set_cookie("oauth_state", state, max_age=600, httponly=True, secure=secure, samesite="lax")
+    return response
+
+def _valid_oauth_state(request: Request, state: str | None) -> bool:
+    expected = request.cookies.get("oauth_state")
+    return bool(expected and state and secrets.compare_digest(expected, state))
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = None, info: str = None):
@@ -49,17 +60,11 @@ async def login_google(request: Request):
         
     redirect_uri = get_redirect_uri(request, "google")
     state = secrets.token_hex(16)
-    google_auth_url = (
-        f"https://accounts.google.com/o/oauth2/v2/auth?"
-        f"client_id={GOOGLE_CLIENT_ID}&"
-        f"redirect_uri={redirect_uri}&"
-        f"response_type=code&"
-        f"scope=openid%20profile%20email&"
-        f"state={state}"
-    )
-    # Note: In a production app, the state should be checked in the callback, 
-    # but for this service-level dashboard, direct redirection is fine.
-    return RedirectResponse(url=google_auth_url)
+    google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode({
+        "client_id": GOOGLE_CLIENT_ID, "redirect_uri": redirect_uri,
+        "response_type": "code", "scope": "openid profile email", "state": state,
+    })
+    return _oauth_redirect(google_auth_url, state, request.url.scheme == "https")
 
 @router.get("/login/facebook")
 async def login_facebook(request: Request):
@@ -68,18 +73,16 @@ async def login_facebook(request: Request):
         
     redirect_uri = get_redirect_uri(request, "facebook")
     state = secrets.token_hex(16)
-    facebook_auth_url = (
-        f"https://www.facebook.com/v12.0/dialog/oauth?"
-        f"client_id={FACEBOOK_CLIENT_ID}&"
-        f"redirect_uri={redirect_uri}&"
-        f"response_type=code&"
-        f"scope=email%20public_profile&"
-        f"state={state}"
-    )
-    return RedirectResponse(url=facebook_auth_url)
+    facebook_auth_url = "https://www.facebook.com/v12.0/dialog/oauth?" + urlencode({
+        "client_id": FACEBOOK_CLIENT_ID, "redirect_uri": redirect_uri,
+        "response_type": "code", "scope": "email public_profile", "state": state,
+    })
+    return _oauth_redirect(facebook_auth_url, state, request.url.scheme == "https")
 
 @router.get("/auth/callback/google")
 async def callback_google(request: Request, code: str = None, error: str = None):
+    if not _valid_oauth_state(request, request.query_params.get("state")):
+        return RedirectResponse(url="/login?error=Invalid+OAuth+state")
     if error or not code:
         return RedirectResponse(url=f"/login?error=Google+login+failed:+{error or 'Missing+code'}")
         
@@ -131,6 +134,7 @@ async def callback_google(request: Request, code: str = None, error: str = None)
         # Create session cookie
         session_cookie = create_session_cookie(user)
         response = RedirectResponse(url="/?welcome=true", status_code=status.HTTP_303_SEE_OTHER)
+        response.delete_cookie("oauth_state")
         response.set_cookie(
             key="session",
             value=session_cookie,
@@ -146,6 +150,8 @@ async def callback_google(request: Request, code: str = None, error: str = None)
 
 @router.get("/auth/callback/facebook")
 async def callback_facebook(request: Request, code: str = None, error: str = None):
+    if not _valid_oauth_state(request, request.query_params.get("state")):
+        return RedirectResponse(url="/login?error=Invalid+OAuth+state")
     if error or not code:
         return RedirectResponse(url=f"/login?error=Facebook+login+failed:+{error or 'Missing+code'}")
         
@@ -197,6 +203,7 @@ async def callback_facebook(request: Request, code: str = None, error: str = Non
         # Create session cookie
         session_cookie = create_session_cookie(user)
         response = RedirectResponse(url="/?welcome=true", status_code=status.HTTP_303_SEE_OTHER)
+        response.delete_cookie("oauth_state")
         response.set_cookie(
             key="session",
             value=session_cookie,
@@ -213,6 +220,8 @@ async def callback_facebook(request: Request, code: str = None, error: str = Non
 @router.get("/auth/mock-callback")
 async def mock_callback(request: Request, provider: str):
     """Simulates a successful OAuth login for local development and reviewers."""
+    if is_production():
+        return RedirectResponse(url="/login?error=Mock+login+is+disabled")
     if provider == "facebook":
         name = "Facebook Socialite"
         email = "facebook.user@example.com"

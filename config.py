@@ -2,15 +2,15 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables for local development fallback
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 # Database Configuration
 MONGO_DB_URL_KEY = "MONGO_DB_URL"
-DATABASE_NAME = "customer_db"
-COLLECTION_NAME = "marketing_records"
-
+DATABASE_NAME = os.getenv("MONGO_DATABASE_NAME", "cryptoxneuron")
+CUSTOMER_COLLECTION_NAME = os.getenv("MONGO_CUSTOMER_COLLECTION_NAME", "customers")
+USER_COLLECTION_NAME = os.getenv("MONGO_USER_COLLECTION_NAME", "users")
 # Model Artifact Paths
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
 MODEL_FILE_NAME = "model.pkl"
 PREPROCESSOR_FILE_NAME = "preprocessor.pkl"
@@ -53,3 +53,6 @@ GRID_SEARCH_PARAM_GRID = {
 
 APP_HOST = os.getenv("APP_HOST", "127.0.0.1")
 APP_PORT = int(os.getenv("APP_PORT", "5000"))
+
+def is_production() -> bool:
+    return os.getenv("APP_ENV", "").lower() in {"prod", "production"}

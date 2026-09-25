@@ -6,6 +6,10 @@ from services.training import train_model
 router = APIRouter()
 
 @router.get("/train")
+async def train_get_disabled():
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+@router.post("/train")
 async def trainRouteClient(x_training_api_key: str = Header(default="")):
     expected_key = os.getenv("TRAINING_API_KEY")
     if not expected_key:
@@ -25,5 +29,5 @@ async def trainRouteClient(x_training_api_key: str = Header(default="")):
         app_logging.exception("Training failed:")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"status": False, "error": f"Training failed: {str(e)}"},
+            content={"status": False, "error": "Training failed. Check server logs for details."},
         )
