@@ -15,7 +15,7 @@ export default function LoginPage() {
         <h2>Welcome back</h2>
         <p>Sign in to your account or create a new session to continue.</p>
 
-        <a href="https://cryptox-neuron-ai.onrender.com/" className="primary-button full-width" style={{display: 'inline-block', textAlign: 'center'}}>Continue to CryptoX Neuron AI</a>
+        <a href="https://cryptox-neuron-ai.onrender.com/login" className="primary-button full-width" style={{display: 'inline-block', textAlign: 'center'}}>Continue to Secure Login</a>
 
         <Link to="/" className="back-link">Back to home</Link>
       </motion.div>
