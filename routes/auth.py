@@ -209,7 +209,7 @@ async def callback_facebook(request: Request, code: str = None, error: str = Non
             value=session_cookie,
             httponly=True,
             max_age=86400 * 30, # 30 days
-            samesite="lax",
+            samesite="none" if request.url.scheme == "https" else "lax",
             secure=request.url.scheme == "https"
         )
         return response
@@ -250,7 +250,7 @@ async def mock_callback(request: Request, provider: str):
         value=session_cookie,
         httponly=True,
         max_age=86400 * 30,
-        samesite="lax",
+        samesite="none" if request.url.scheme == "https" else "lax",
         secure=request.url.scheme == "https"
     )
     return response
@@ -273,7 +273,7 @@ async def register_user(request: Request, name: str = Form(...), email: str = Fo
         value=session_cookie,
         httponly=True,
         max_age=86400 * 30,
-        samesite="lax",
+        samesite="none" if request.url.scheme == "https" else "lax",
         secure=request.url.scheme == "https"
     )
     return response
@@ -296,7 +296,7 @@ async def login_email(request: Request, email: str = Form(...), password: str = 
         value=session_cookie,
         httponly=True,
         max_age=86400 * 30,
-        samesite="lax",
+        samesite="none" if request.url.scheme == "https" else "lax",
         secure=request.url.scheme == "https"
     )
     return response
