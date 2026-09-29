@@ -8,7 +8,7 @@ const PLAN_INFO = {
   professional: {
     name: 'Professional',
     price: '₹999/month',
-    qr: import.meta.env.VITE_PROFESSIONAL_PAYMENT_QR_URL || '',
+    qr: import.meta.env.VITE_PROFESSIONAL_PAYMENT_QR_URL || '/payment/professional-qr.svg',
   },
   enterprise: {
     name: 'Enterprise',
