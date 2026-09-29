@@ -8,6 +8,7 @@ import SolutionsPage from './pages/SolutionsPage';
 import PricingPage from './pages/PricingPage';
 import ResourcesPage from './pages/ResourcesPage';
 import LoginPage from './pages/LoginPage';
+import UpgradePage from './pages/UpgradePage';
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
@@ -53,6 +54,7 @@ function AnimatedRoutes() {
           <Route path="pricing" element={<PageShell><PricingPage /></PageShell>} />
           <Route path="resources" element={<PageShell><ResourcesPage /></PageShell>} />
           <Route path="login" element={<PageShell><LoginPage /></PageShell>} />
+          <Route path="upgrade" element={<PageShell><UpgradePage /></PageShell>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
