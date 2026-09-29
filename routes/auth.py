@@ -140,7 +140,7 @@ async def callback_google(request: Request, code: str = None, error: str = None)
             value=session_cookie,
             httponly=True,
             max_age=86400 * 30, # 30 days
-            samesite="lax",
+            samesite="none" if request.url.scheme == "https" else "lax",
             secure=request.url.scheme == "https"
         )
         return response
