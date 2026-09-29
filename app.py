@@ -46,7 +46,8 @@ async def add_security_headers(request: Request, call_next):
     if request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.cookies.get("session"):
         origin = request.headers.get("origin")
         expected_origin = f"{request.url.scheme}://{request.url.netloc}"
-        if origin and origin.rstrip("/") != expected_origin.rstrip("/"):
+        allowed_request_origins = {item.rstrip("/") for item in origins}
+        if origin and origin.rstrip("/") != expected_origin.rstrip("/") and origin.rstrip("/") not in allowed_request_origins:
             return JSONResponse(status_code=403, content={"status": False, "message": "Cross-origin request rejected."})
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
