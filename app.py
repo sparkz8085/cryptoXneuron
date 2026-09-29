@@ -21,7 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent
 
 def get_allowed_origins() -> List[str]:
     origins = os.getenv("CORS_ORIGINS", "")
-    return [origin.strip() for origin in origins.split(",") if origin.strip()]
+    configured = [origin.strip() for origin in origins.split(",") if origin.strip()]
+    if configured:
+        return configured
+    if os.getenv("APP_ENV", "").lower() in {"prod", "production"}:
+        return ["https://cryptox-neuron.vercel.app"]
+    return []
 
 app = FastAPI(title="Customer Categorizer", docs_url=None, redoc_url=None)
 origins = get_allowed_origins()
